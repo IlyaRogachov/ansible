@@ -1,0 +1,118 @@
+- name: Check if /opt/graphite/conf exist
+  stat: path=/opt/graphite/conf/carbon.conf
+  register: carbon_stat
+
+- name: CP carbon.conf.example carbon.conf
+  command: cp /opt/graphite/conf/carbon.conf.example /opt/graphite/conf/carbon.conf
+  when: not carbon_stat.stat.exists
+
+- name: Create /opt/graphite/conf/storage-schemas.conf file
+  template:  src="{{ role_path }}/templ/storage-schemas.conf" dest="/opt/graphite/conf/" group="root"  owner="root"
+
+#- name: Carbon start
+#  shell: "./carbon-cache.py start" 
+#  args:
+#    chdir: "/opt/graphite/bin" 
+
+- name: Check if /opt/graphite/graphite-web exist
+  stat: path=/opt/graphite/graphite-web
+  register: web_stat
+
+- name: Deploy Graphite web UI from Github repository
+  git: repo="https://github.com/graphite-project/graphite-web.git" dest=/opt/graphite/graphite-web
+  when: not web_stat.stat.exists
+
+- name: Create /opt/graphite/conf/graphite.ini file
+  template:  src="{{ role_path }}/templ/graphite.ini" dest="/opt/graphite/conf/graphite.ini" group="root"  owner="root"
+
+- name: Create /etc/uwsgi/apps-available/ directory
+  file:
+    path="/etc/uwsgi/apps-available/"
+    group="root"
+    owner="root"
+    state=directory
+
+- name: Create  symlink /etc/uwsgi/apps-available/graphite.ini
+  file: src="/opt/graphite/conf/graphite.ini"  dest="/etc/uwsgi/apps-available/graphite.ini" state=link owner="root" group="root"
+
+- name: Delete conf /etc/nginx/nginx.conf
+  file:
+    path="/etc/nginx/nginx.conf"
+    state=absent
+
+- name: Create  /opt/graphite/conf/graphite.nginx file
+  template:  src="{{ role_path }}/templ/graphite.nginx" dest="/opt/graphite/conf/graphite.nginx" group="root"  owner="root"
+
+- name: Create  symlink /etc/nginx/nginx.conf
+  file: src="/opt/graphite/conf/graphite.nginx"  dest="/etc/nginx/nginx.conf" state=link owner="root" group="root"
+
+- name: Create /opt/{{ cosmos_user }}_log/nginx/log directory
+  file:
+    path="/opt/{{ cosmos_user }}_log/nginx/log"
+    group="root"
+    owner="root"
+    mode=0777
+    state=directory
+
+- name: Create  /opt/graphite/webapp/graphite/local_settings.py file
+  template:  src="{{ role_path }}/templ/local_settings.py" dest="/opt/graphite/webapp/graphite/local_settings.py" group="root"  owner="root"
+
+- name: Check if /opt/graphite/webapp/manage.py exist
+  stat: path=/opt/graphite/webapp/manage.py
+  register: managepy_stat
+
+- name: CP webapp/manage.py
+  command: cp  /opt/graphite/graphite-web/webapp/manage.py /opt/graphite/webapp/manage.py
+  when: not managepy_stat.stat.exists
+
+- name: Change permission /opt/graphite/storage
+  file:
+    path="/opt/graphite/storage"
+    mode=0777
+
+- name: Initialize django application database	
+  shell: "python manage.py migrate" 
+  args:
+    chdir: "/opt/graphite/webapp" 
+
+- name: Create  /opt/graphite/conf/graphite.wsgi file
+  template:  src="{{ role_path }}/templ/graphite.wsgi" dest="/opt/graphite/conf/graphite.wsgi" group="root"  owner="root"
+
+- name: Change permission /opt/graphite/storage/log/webapp
+  file:
+    path="/opt/graphite/storage/log/webapp"
+    mode=0777
+
+- name: Change permission /opt/graphite/storage/graphite.db
+  file:
+    path="/opt/graphite/storage/graphite.db"
+    mode=0777
+
+- name: Check if /opt/graphite/webapp/static exist
+  stat: path=/opt/graphite/webapp/static
+  register: static_stat
+
+- name: CP /opt/graphite/webapp/static
+  command: cp -r /opt/graphite/webapp/content /opt/graphite/webapp/static
+  when: not static_stat.stat.exists
+
+- name: Create /var/log/uwsgi/app directory
+  file:
+    path="/var/log/uwsgi/app"
+    group="root"
+    owner="root"
+    state=directory
+
+- name: Service uwsgi stop
+  service: name=uwsgi state=stopped
+
+- name: Create  /opt/graphite/conf/graphite.wsgi file
+  template:  src="{{ role_path }}/templ/uwsgi.ini" dest="/etc/uwsgi.ini" group="root"  owner="root"
+
+
+- name: Service uwsgi start
+  service: name=uwsgi state=started
+
+- name: Service nginx start
+  service: name=nginx state=started
+

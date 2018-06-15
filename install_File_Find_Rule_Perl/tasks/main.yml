@@ -1,0 +1,3 @@
+#Perl package needed for crutch log rotator
+- name: Install the latest version of perl-File-Find-Rule-Perl 
+  package: name=perl-File-Find-Rule-Perl state=latest

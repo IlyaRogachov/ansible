@@ -1,0 +1,33 @@
+---
+- name: Make directory for nginx certificates
+  file:
+    path: /etc/ssl/nginx 
+    state: directory
+    owner: root
+    group: root
+  tags:
+    - nginx 
+
+- name: Copy certficates to the server
+  copy: src="{{ role_path }}/cert/" dest="/etc/ssl/nginx" owner="root" group="root"   
+  tags:
+    - nginx
+
+- name: Install the latest version of ca-certificates
+  package: name=ca-certificates state=latest
+  tags:
+    - nginx
+
+- name: Add yum repository for nginx plus
+  get_url: 
+     url="https://cs.nginx.com/static/files/nginx-plus-7.repo"    
+     dest="/etc/yum.repos.d"
+     timeout=1000
+  tags:
+    - nginx
+
+- name: Install the latest version of nginx plus
+  package: name=nginx-plus state=latest
+  tags:
+    - nginx
+ 

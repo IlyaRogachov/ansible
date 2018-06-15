@@ -1,0 +1,47 @@
+- name: Add rpm key for filebeat
+  rpm_key:
+    state: present
+    key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+- name: Add yum repository for elasticsearch-curator
+  yum_repository:
+    name: elasticsearch-curator
+    description: elasticsearch-curator 5.x repo
+    baseurl: https://packages.elastic.co/curator/5/centos/7
+    gpgcheck: yes
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    enabled: yes
+
+- name: Install or update elasticsearch-curator package
+  yum:
+    name: elasticsearch-curator
+    state: latest
+
+- name: Create elasticsearch-curator config dir
+  file:
+    path: /etc/curator
+    state: directory
+
+- name: Copy elasticsearch-curator config file
+  template:
+    src:   curator.yml.j2
+    dest:  "/etc/curator/curator.yml"
+    owner: root
+    group: root
+    mode:  0644
+
+- name: Create elasticsearch-curator actions config file
+  template:
+    src:   actions.yml.j2
+    dest:  "/etc/curator/actions.yml"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Create cron job for elasticsearch-curator
+  cron:
+   name: Delete all logstash indices older than 30 days
+   user: root
+   minute: 22
+   hour: 00
+   job: "/usr/bin/curator --config /etc/curator/curator.yml /etc/curator/actions.yml"

@@ -1,0 +1,32 @@
+- name: Install ruby
+  yum:
+    name: ruby
+    state: present
+
+- name: Get Instance Metadata
+  ec2_facts:
+
+- name: Download CodeDeploy agent binary
+  get_url:
+    url: "https://aws-codedeploy-{{ ansible_ec2_placement_region }}.s3.amazonaws.com/latest/install"
+    dest: /tmp/codedeploy-install
+
+- name: Set permissions on CodeDeploy agent binary
+  file:
+    state: file
+    path: /tmp/codedeploy-install
+    mode: 0744
+
+- name: Install Codedeploy agent
+  command: /tmp/codedeploy-install auto
+
+- name: Start CodeDeploy agent and enable CodeDeploy agent autostart
+  systemd:
+    name: codedeploy-agent
+    state: started
+    enabled: yes
+
+- name: Delete downloaded binary
+  file:
+    path: /tmp/codedeploy-install
+    state: absent

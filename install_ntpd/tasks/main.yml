@@ -1,0 +1,11 @@
+- name: Install NTP daemon and utilities if not present
+  yum: name=ntp state=present
+
+- name: Disable chrony
+  systemd: name=chronyd enabled=no state=stopped
+
+- name: Copy over the NTP configuration
+  template: src=ntp.conf dest=/etc/ntp.conf
+
+- name: Enable ntpd
+  systemd: name=ntpd enabled=yes state=started

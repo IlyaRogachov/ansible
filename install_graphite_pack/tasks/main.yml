@@ -1,0 +1,87 @@
+- name: Install the latest version of  libffi-devel
+  package: name=libffi-devel state=latest
+  tags:
+    - graphite
+
+- name: Install the 'Development tools' package group
+  yum: name="@Development tools" state=present
+  tags:
+    - graphite
+
+- name: Install the latest version of  python-pip           
+  package: name=python-pip state=latest
+  tags:
+    - graphite
+
+- name: Install the latest version of pycairo-1.8.6-2.1.el6.x86_64
+  package: name=pycairo state=latest
+  tags:
+    - graphite
+
+- name: Install the latest version of virtualenv
+  pip: name=virtualenv
+  tags:
+    - graphite
+
+- name: touch requirements file for pip
+  file: path=/tmp/pip_requirements state=touch mode=0755
+  tags:
+    - graphite
+
+- name: Configure requirements file 
+  lineinfile: 
+    dest=/tmp/pip_requirements
+    line={{ item }}
+  with_items:
+    - "django<1.8" 
+  tags:
+    - graphite
+
+- name: Install the latest version of django<1.8
+  pip: requirements=/tmp/pip_requirements
+  tags:
+    - graphite
+
+- name: Install the latest version of django-tagging pytz pyparsing
+  pip: name={{ item }}
+  with_items:
+       - django-tagging
+       - pytz
+       - pyparsing
+  tags:
+    - graphite
+
+- name: Install the latest version of  packages  
+  package: name={{ item }} state=latest
+  with_items:
+       - fontconfig
+       - uwsgi
+       - python-devel
+       - zlib-devel
+       - bzip2-devel
+       - ncurses-devel
+       - sqlite-devel
+       - python-memcached
+       - python-rrdtool
+       - uwsgi-plugin-python
+       - nginx 
+  tags:
+    - graphite
+
+- name: Install the latest version of service-identity
+  pip: name=service-identity
+  tags:
+    - graphite
+
+
+- name: Installing Graphite
+  pip: name={{ item }}
+  with_items:
+       - "https://github.com/graphite-project/ceres/tarball/master" 
+       - whisper
+       - carbon
+       - graphite-web
+       - cairocffi
+  tags:
+    - graphite
+

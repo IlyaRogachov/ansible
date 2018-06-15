@@ -1,0 +1,36 @@
+---
+- name: Make directory for Java /opt/java/
+  file:
+    path: /opt/java/
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwx,go=rx"
+
+- name: Download Java8 tarball from Artifactory
+  get_url:
+    url="{{ java8_download_url }}"
+    dest=/opt/java/
+  register: java_tar
+
+- name: Unarchive Java8
+  unarchive:
+    src: /opt/java/{{ java_tar.dest | basename }}
+    dest: /opt/java/
+    owner: root
+    group: root
+    remote_src: yes
+    list_files: yes
+  register: tar_dirname
+
+- name: Create Java8 home symlink
+  file: src=/opt/java/{{ tar_dirname.files[0] | dirname}} dest=/opt/java/java8 state=link
+
+- name: Delete Java8 tarball
+  file: state=absent path=/opt/java/{{ java_tar.dest | basename }}
+
+- name: Make Java8 available for system with alternatives. Will be default
+  alternatives:
+    name=java
+    link=/usr/bin/java
+    path=/opt/java/java8/jre/bin/java
