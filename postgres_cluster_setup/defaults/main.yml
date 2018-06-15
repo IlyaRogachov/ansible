@@ -1,0 +1,23 @@
+pg_version: 9.5.7
+pg_user: postgres
+pg_group: "{{ pg_user }}"
+pg_base: "/opt/{{ pg_user }}"
+pg_bin_dir: "{{ pg_base }}/{{ pg_version }}/bin"
+pg_data_dir: "/db{{ systemname }}/data"
+pg_tbs_dir: "/db{{ systemname }}/databases"
+pg_initdb_options: --locale=en_US.UTF-8
+# env options
+pg_db01_ip: "{{ dig_db01.stdout }}"
+pg_db02_ip: "{{ dig_db02.stdout }}"
+pg_bkp_ip: "{{ dig_bkp.stdout }}"
+pg_be01_ip: "{{ dig_be01.stdout }}"
+pg_be02_ip: "{{ dig_be02.stdout }}"
+# cluster options
+pg_shared_buffers: 512MB
+pg_work_mem: 32MB
+pg_maint_work_mem: 64MB
+pg_ckpt_timeout: 1h
+pg_ckpt_target: 0.9
+pg_max_wal_size: 2GB
+pg_min_wal_size: 160MB
+pg_log_prefix: '%m %q[%p|%c|%x::%l] %a@%h - %u@%d '

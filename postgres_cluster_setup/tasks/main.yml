@@ -1,0 +1,92 @@
+- name: Infer system name
+  set_fact:
+    systemname: "{{ ansible_hostname[2:][:-4] }}"
+
+- name: Check if we're demo
+  set_fact:
+    pg_port: 5433
+  when: ansible_hostname | match("cs.*demodb\d+")
+
+- name: Find db01 ip
+  command: "dig +short +search {{ ansible_hostname | regex_replace('(cs.*db)\\d+','\\g<1>01') }}"
+  register: dig_db01
+
+- name: Find db02 ip
+  command: "dig +short +search {{ ansible_hostname | regex_replace('(cs.*db)\\d+','\\g<1>02') }}"
+  register: dig_db02
+
+- name: Find bkp ip
+  command: "dig +short +search {{ ansible_hostname | regex_replace('(cs.*)(live|demo).*','\\g<1>dbbkp01') }}"
+  register: dig_bkp
+
+- name: Find be01 ip
+  command: "dig +short +search {{ ansible_hostname | regex_replace('(cs.*)db\\d+','\\g<1>be01') }}"
+  register: dig_be01
+
+- name: Find be02 ip
+  command: "dig +short +search {{ ansible_hostname | regex_replace('(cs.*)db\\d+','\\g<1>be02') }}"
+  register: dig_be02
+
+- name: Set ownership on cluster directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ pg_user }}"
+    group: "{{ pg_group }}"
+    mode: 0700
+  with_items:
+    - "{{ pg_data_dir }}"
+    - "{{ pg_tbs_dir }}"
+
+- name: Init postgresql cluster
+  command: '{{ pg_bin_dir }}/pg_ctl -D {{ pg_data_dir }} -o "{{ pg_initdb_options }}" initdb'
+  args:
+    creates: "{{ pg_data_dir }}/pg_xlog"
+  become_user: "{{ pg_user }}"
+
+- name: Copy templated postgresql.conf
+  template:
+    src: "{{ role_path }}/templates/postgresql.conf.j2"
+    dest: "{{ pg_data_dir }}/postgresql.conf"
+    owner: "{{ pg_user }}"
+    group: "{{ pg_group }}"
+
+- name: Copy templated pg_hba.conf
+  template:
+    src: "{{ role_path }}/templates/pg_hba.conf.j2"
+    dest: "{{ pg_data_dir }}/pg_hba.conf"
+    owner: "{{ pg_user }}"
+    group: "{{ pg_group }}"
+
+- name: Create specific service script in init.d
+  copy:
+    src: /etc/init.d/postgres
+    dest: "/etc/init.d/postgres-{{ systemname }}"
+    mode: 0755
+    force: no
+    remote_src: yes
+
+- name: Update specific service script in init.d
+  lineinfile:
+    dest: "/etc/init.d/postgres-{{ systemname }}"
+    state: present
+    backrefs: yes
+    line: "PGDATA={{ pg_data_dir }}"
+    regexp: '^PGDATA='
+
+- name: Start postgres cluster
+  service:
+    name: "postgres-{{ systemname }}"
+    state: started
+
+- name: Chown serverlog
+  file:
+    path: "{{ pg_data_dir }}/serverlog"
+    owner: "{{ pg_user }}"
+    group: "{{ pg_group }}"
+
+- name: Set up OS user env - bash_profile
+  lineinfile:
+    dest: "{{ pg_base }}/.bash_profile"
+    line: "export PGPORT={{ pg_port|default(5432) }}"
+    state: present
+    create: yes
